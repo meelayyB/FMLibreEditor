@@ -211,7 +211,8 @@ impl Session {
         let edition = profile.as_ref().map(|p| p.edition).or(game.edition);
         let layout = edition.and_then(layout_for).ok_or(SessionError::UnsupportedEdition(edition))?;
         let hint = profile.as_ref().filter(|_| source == ArraySource::ProfileFirst).map(|p| &p.arrays);
-        let arrays = calibrate(&process, &plugin, &layout, hint);
+        let player_pointer_bias = profile.as_ref().and_then(|p| p.player_pointer_bias).unwrap_or(0);
+        let arrays = calibrate(&process, &plugin, &layout, hint, player_pointer_bias);
         if arrays.players.is_none() {
             return Err(SessionError::PlayersNotFound);
         }
