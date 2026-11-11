@@ -168,7 +168,7 @@ pub fn calibrate(
     player_pointer_bias: u64,
 ) -> EntityArrays {
     let mut arrays = EntityArrays { players: None, staff: None, clubs: None, from_profile: false, missed: [None; 3] };
-    find_missing(process, module, layout, hint, &mut arrays);
+    find_missing(process, module, layout, hint, player_pointer_bias, &mut arrays);
     arrays
 }
 
@@ -180,6 +180,7 @@ pub(crate) fn find_missing(
     module: &Module,
     layout: &Layout,
     hint: Option<&ArrayRvas>,
+    player_pointer_bias: u64,
     arrays: &mut EntityArrays,
 ) -> bool {
     let mut found = false;
@@ -580,7 +581,7 @@ mod tests {
         assert!(arrays.staff.is_some_and(|staff| staff.from_profile && staff.pair_rva == staff_pair));
         assert!(!arrays.from_profile);
         // Nothing new to find, and what was found stays.
-        assert!(!find_missing(&process, &no_module(), &layout, Some(&hint), &mut arrays));
+        assert!(!find_missing(&process, &no_module(), &layout, Some(&hint), 0, &mut arrays));
         assert!(arrays.staff.is_some_and(|staff| staff.pair_rva == staff_pair));
     }
 
