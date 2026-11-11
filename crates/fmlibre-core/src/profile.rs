@@ -823,6 +823,9 @@ pub struct BuildProfile {
     pub package_version: Option<String>,
     pub plugin: PluginFingerprint,
     pub arrays: ArrayRvas,
+    /// Bytes to subtract from each pointer in the player array before reading the player object. Some Console builds
+    /// keep pointers to a base-class subobject rather than to the start of the complete player object.
+    pub player_pointer_bias: Option<u64>,
     /// RVA in the game plugin of the in-game date, where it is not next to the arrays at
     /// [`ClusterLayout::current_date`]: on macOS, and on Windows since the November 2026 update (Game Pass
     /// 0.9.2409.0, Steam build 26340721), it is a variable of its own.
@@ -974,6 +977,9 @@ pub fn profile_text(profile: &BuildProfile, notes: &ProfileNotes) -> String {
     text += &format!("storefront = \"{storefront}\"\n");
     if let Some(version) = &profile.package_version {
         text += &format!("package_version = {}\n", quoted(version));
+    }
+    if let Some(bias) = profile.player_pointer_bias {
+        text += &format!("player_pointer_bias = {bias:#X}\n");
     }
     if let Some(rva) = profile.current_date {
         text += &format!("\n{}current_date = {rva:#X}\n", comments(&notes.current_date));
