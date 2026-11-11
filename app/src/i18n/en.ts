@@ -1272,6 +1272,7 @@ export const en = {
   checks: {
     gameDate: "the in-game date",
     players: "players' details",
+    abilities: "current and potential ability",
     positions: "positions",
     attributes: "attributes",
     personality: "personality",

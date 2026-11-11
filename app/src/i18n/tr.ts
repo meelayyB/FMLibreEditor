@@ -1201,6 +1201,7 @@ export const tr: Strings = {
   checks: {
     gameDate: "oyun içi tarih",
     players: "oyuncu bilgileri",
+    abilities: "mevcut ve potansiyel yetenek",
     positions: "mevkiler",
     attributes: "nitelikler",
     personality: "kişilik",

@@ -1179,6 +1179,7 @@ export const id: Strings = {
   checks: {
     gameDate: "tanggal dalam game",
     players: "detail pemain",
+    abilities: "kemampuan saat ini dan potensi",
     positions: "posisi",
     attributes: "atribut",
     personality: "kepribadian",

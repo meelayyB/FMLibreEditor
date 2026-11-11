@@ -2638,6 +2638,7 @@ let saveChanged = new URLSearchParams(window.location.search).has("savechanged")
 const CHECKS: CheckKey[] = [
   "gameDate",
   "players",
+  "abilities",
   "positions",
   "attributes",
   "personality",

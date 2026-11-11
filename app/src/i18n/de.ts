@@ -1317,6 +1317,7 @@ export const de: Strings = {
   checks: {
     gameDate: "Spieldatum",
     players: "Spielerdaten",
+    abilities: "aktuelle und potenzielle Fähigkeit",
     positions: "Positionen",
     attributes: "Attribute",
     personality: "Persönlichkeit",

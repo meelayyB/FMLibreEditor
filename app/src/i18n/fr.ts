@@ -1341,6 +1341,7 @@ export const fr: Strings = {
   checks: {
     gameDate: "la date du jeu",
     players: "les données des joueurs",
+    abilities: "le niveau actuel et le potentiel",
     positions: "les postes",
     attributes: "les attributs",
     personality: "la personnalité",

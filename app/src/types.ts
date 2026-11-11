@@ -163,6 +163,7 @@ export interface TeamFreeze {
 export type CheckKey =
   | "gameDate"
   | "players"
+  | "abilities"
   | "positions"
   | "attributes"
   | "personality"

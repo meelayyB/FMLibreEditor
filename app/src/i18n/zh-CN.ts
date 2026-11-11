@@ -1353,6 +1353,7 @@ export const zhCN: Strings = {
   checks: {
     gameDate: "游戏内日期",
     players: "球员信息",
+    abilities: "当前能力和潜力",
     positions: "位置能力",
     attributes: "属性",
     personality: "性格",

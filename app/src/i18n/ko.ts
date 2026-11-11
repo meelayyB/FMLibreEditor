@@ -1238,6 +1238,7 @@ export const ko: Strings = {
   checks: {
     gameDate: "게임 내 날짜",
     players: "선수 정보",
+    abilities: "현재 및 잠재 능력",
     positions: "포지션",
     attributes: "능력치",
     personality: "성격",

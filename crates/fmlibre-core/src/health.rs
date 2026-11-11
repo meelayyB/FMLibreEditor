@@ -50,6 +50,10 @@ pub enum Check {
     /// within their potential without being it for most. Guards those fields and the rest of the player's own
     /// (nation, asking price, caps, traits).
     Players,
+    /// Current and potential ability are in range, and current ability is within potential for nearly every player.
+    /// Kept separate from the rest of the player's details so a moved birth date, height or reputation field does not
+    /// unnecessarily make known-good ability fields read-only.
+    Abilities,
     /// Position ratings go up to 20, and each player rates 20 where he is natural.
     Positions,
     /// Attributes go up to 100 as stored; goalkeepers rate higher at goalkeeping than the rest, strikers at finishing
@@ -82,9 +86,10 @@ pub enum Check {
 pub const STRUCTURE: [Check; 4] = [Check::Contracts, Check::Teams, Check::Staff, Check::Clubs];
 
 impl Check {
-    pub const ALL: [Check; 11] = [
+    pub const ALL: [Check; 12] = [
         Check::GameDate,
         Check::Players,
+        Check::Abilities,
         Check::Positions,
         Check::Attributes,
         Check::Personality,
@@ -101,6 +106,7 @@ impl Check {
         match self {
             Check::GameDate => "gameDate",
             Check::Players => "players",
+            Check::Abilities => "abilities",
             Check::Positions => "positions",
             Check::Attributes => "attributes",
             Check::Personality => "personality",
@@ -119,6 +125,7 @@ impl Check {
         match field.entity {
             Entity::Staff => Check::Staff,
             Entity::Club => Check::Clubs,
+            Entity::Player if matches!(key, "current_ability" | "potential_ability") => Check::Abilities,
             Entity::Player if key.starts_with("attribute.") => Check::Attributes,
             Entity::Player if key.starts_with("position.") => Check::Positions,
             Entity::Player if key.starts_with("personality.") => Check::Personality,
@@ -136,6 +143,7 @@ impl fmt::Display for Check {
         f.write_str(match self {
             Check::GameDate => "the in-game date",
             Check::Players => "the players' own values",
+            Check::Abilities => "current and potential ability",
             Check::Positions => "the position ratings",
             Check::Attributes => "the attributes",
             Check::Personality => "the personality ratings",
@@ -507,6 +515,7 @@ pub(crate) fn check(session: &Session) -> Health {
     let players = sample_players(session);
 
     let mut own = Tally::default();
+    let mut abilities = Tally::default();
     // Current ability within the potential, and the two not the same for most: a potential read in place of the
     // current ability would equal it.
     let mut within = Tally::default();
@@ -541,6 +550,7 @@ pub(crate) fn check(session: &Session) -> Health {
             .iter()
             .all(|&at| player.u16(layout, at) <= 10_000);
         own.add(born && height && ability && potential && reputation);
+        abilities.add(ability && potential);
         let (current, potential) = (player.u16(layout, p.current_ability), player.u16(layout, p.potential_ability));
         if (1..=200).contains(&potential) {
             within.add(current <= potential);
@@ -650,6 +660,9 @@ pub(crate) fn check(session: &Session) -> Health {
     let mut own = own.result(Check::Players, 0.97, String::new());
     own.passed &= within.holds(0.95) && same.fit * 2 <= same.sampled;
     own.note = format!("{} of {} within their potential, {} of them at it", within.fit, within.sampled, same.fit);
+    let mut abilities = abilities.result(Check::Abilities, 0.99, String::new());
+    abilities.passed &= within.holds(0.95) && same.fit * 2 <= same.sampled;
+    abilities.note = format!("{} of {} within their potential, {} of them at it", within.fit, within.sampled, same.fit);
     let mut contracts = contracts.result(Check::Contracts, 0.95, String::new());
     contracts.passed &= renewed.sampled >= LEAST_SAMPLED && renewed.fit * 20 >= renewed.sampled;
     contracts.note = format!("{} of {} signed after the player joined", renewed.fit, renewed.sampled);
@@ -658,6 +671,7 @@ pub(crate) fn check(session: &Session) -> Health {
         results: vec![
             date_result,
             own,
+            abilities,
             positions,
             attributes,
             personality.result(Check::Personality, 0.99, String::new()),
@@ -1253,6 +1267,8 @@ mod tests {
         assert_eq!(check(Entity::Player, "personality.ambition"), Check::Personality);
         assert_eq!(check(Entity::Player, "contract.wage"), Check::Contracts);
         assert_eq!(check(Entity::Player, "morale"), Check::LiveValues);
+        assert_eq!(check(Entity::Player, "current_ability"), Check::Abilities);
+        assert_eq!(check(Entity::Player, "potential_ability"), Check::Abilities);
         assert_eq!(check(Entity::Player, "date_of_birth"), Check::Players);
         assert_eq!(check(Entity::Player, "trait.49"), Check::Players);
         assert_eq!(check(Entity::Staff, "contract.wage"), Check::Staff);
