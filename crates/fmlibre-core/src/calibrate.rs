@@ -25,6 +25,8 @@ const LATEST_BIRTH_YEAR: u16 = 2100;
 #[serde(rename_all = "camelCase")]
 pub struct ArrayRef {
     pub pair_rva: u64,
+    /// Bytes to subtract from each array element to reach the complete object.
+    pub pointer_bias: u64,
     pub count: u64,
     /// Share of sampled elements that decoded as the expected entity: by a name, or, in the place the build profile
     /// gives, by their other fields (see [`calibrate`]).
@@ -41,6 +43,10 @@ impl ArrayRef {
         let begin = process.read_u64(module.base + self.pair_rva)?;
         let end = process.read_u64(module.base + self.pair_rva + 8)?;
         Ok((begin, end.saturating_sub(begin) / 8))
+    }
+
+    pub fn object(&self, pointer: u64) -> u64 {
+        pointer.saturating_sub(self.pointer_bias)
     }
 }
 
@@ -154,7 +160,13 @@ enum Source {
 
 /// Finds the player, staff and club arrays: each in the place the build profile gives when it checks out, the others
 /// by scanning the module. Only reads memory.
-pub fn calibrate(process: &Process, module: &Module, layout: &Layout, hint: Option<&ArrayRvas>) -> EntityArrays {
+pub fn calibrate(
+    process: &Process,
+    module: &Module,
+    layout: &Layout,
+    hint: Option<&ArrayRvas>,
+    player_pointer_bias: u64,
+) -> EntityArrays {
     let mut arrays = EntityArrays { players: None, staff: None, clubs: None, from_profile: false, missed: [None; 3] };
     find_missing(process, module, layout, hint, &mut arrays);
     arrays
@@ -175,7 +187,8 @@ pub(crate) fn find_missing(
     if let Some(hint) = hint {
         for (kind, pair_rva) in [(Kind::Player, hint.players), (Kind::Staff, hint.staff), (Kind::Club, hint.clubs)] {
             if arrays.get(kind).is_none() {
-                match check(process, module, layout, kind, pair_rva, Source::Profile) {
+                let pointer_bias = if matches!(kind, Kind::Player) { player_pointer_bias } else { 0 };
+                match check(process, module, layout, kind, pair_rva, Source::Profile, pointer_bias) {
                     Ok(array) => {
                         *arrays.slot(kind) = Some(array);
                         found = true;
@@ -197,7 +210,7 @@ pub(crate) fn find_missing(
                 .iter()
                 .filter(|candidate| !candidate.pair_rvas.iter().any(|rva| taken.contains(rva)))
                 .filter_map(|candidate| {
-                    Some(check(process, module, layout, kind, *candidate.pair_rvas.first()?, Source::Scan))
+                    Some(check(process, module, layout, kind, *candidate.pair_rvas.first()?, Source::Scan, 0))
                 })
                 .collect();
             let best = checked.iter().filter_map(|checked| checked.ok()).max_by(likelier);
@@ -245,8 +258,9 @@ fn check(
     kind: Kind,
     pair_rva: u64,
     source: Source,
+    pointer_bias: u64,
 ) -> Result<ArrayRef, Option<ArrayRef>> {
-    let probe = ArrayRef { pair_rva, count: 0, confidence: 0.0, named: 0.0, from_profile: false };
+    let probe = ArrayRef { pair_rva, pointer_bias, count: 0, confidence: 0.0, named: 0.0, from_profile: false };
     let (begin, count) = probe.locate(process, module).map_err(|_| None)?;
     if count == 0 || !is_user_pointer(begin) {
         return Err(None);
@@ -255,16 +269,24 @@ fn check(
     let (mut named, mut fit) = (0, 0);
     for k in 0..samples {
         let index = k * count / samples;
-        let Some(object) = process.read_u64(begin + index * 8).ok().filter(|&element| is_user_pointer(element)) else {
+        let Some(pointer) = process.read_u64(begin + index * 8).ok().filter(|&element| is_user_pointer(element)) else {
             continue;
         };
+        let object = pointer.saturating_sub(pointer_bias);
         let has_name = is_named(process, layout, kind, object);
         named += u64::from(has_name);
         fit += u64::from(has_name || (source == Source::Profile && has_fields(process, layout, kind, object)));
     }
     let share = |n: u64| n as f32 / samples as f32;
     let confidence = share(fit);
-    let array = ArrayRef { pair_rva, count, confidence, named: share(named), from_profile: source == Source::Profile };
+    let array = ArrayRef {
+        pair_rva,
+        pointer_bias,
+        count,
+        confidence,
+        named: share(named),
+        from_profile: source == Source::Profile,
+    };
     if confidence >= MIN_CONFIDENCE { Ok(array) } else { Err(Some(array)) }
 }
 
@@ -553,7 +575,7 @@ mod tests {
         // No player list and no club list where the profile puts them: a save still loading, say.
         let (players_pair, clubs_pair) = (memory.array(&[]), memory.array(&[]));
         let hint = ArrayRvas { players: players_pair, staff: staff_pair, clubs: clubs_pair };
-        let mut arrays = calibrate(&process, &no_module(), &layout, Some(&hint));
+        let mut arrays = calibrate(&process, &no_module(), &layout, Some(&hint), 0);
         assert!(arrays.players.is_none() && arrays.clubs.is_none());
         assert!(arrays.staff.is_some_and(|staff| staff.from_profile && staff.pair_rva == staff_pair));
         assert!(!arrays.from_profile);
@@ -574,7 +596,7 @@ mod tests {
         let staff_pair = memory.array(&elements);
         let (players_pair, clubs_pair) = (memory.array(&[]), memory.array(&[]));
         let hint = ArrayRvas { players: players_pair, staff: staff_pair, clubs: clubs_pair };
-        let arrays = calibrate(&process, &no_module(), &layout, Some(&hint));
+        let arrays = calibrate(&process, &no_module(), &layout, Some(&hint), 0);
         assert!(arrays.staff.is_none());
         let lines = arrays.describe();
         let at = |label: &str| lines.iter().position(|line| line.trim_start().starts_with(label)).expect(label);
