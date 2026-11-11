@@ -1,0 +1,67 @@
+name: Build FM27 profile tools
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/src/**"
+      - ".github/workflows/build-profile-tools.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install interface packages
+        working-directory: app
+        run: npm ci
+
+      - name: Build interface
+        working-directory: app
+        run: npm run build
+
+      - name: Build editor and profile probe
+        shell: pwsh
+        run: |
+          cargo build --release -p fmlibre-probe
+          Set-Location app
+          npm run release
+
+      - name: Package tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item target/release/FMLibreEditor.exe out/
+          Copy-Item target/release/fmlibre-probe.exe out/
+          @"
+          FM27 0.9.2437.0 PROFILE TOOL
+
+          1. Start FM27 Console and load your save.
+          2. Keep FM27 running.
+          3. Open Command Prompt in this folder.
+          4. Run:
+             fmlibre-probe.exe profile --out gamepass-0.9.2437.0.toml
+          5. Keep the generated TOML file. It contains addresses and checks for this FM27 build.
+          6. FMLibreEditor.exe includes the readable error fix.
+          "@ | Set-Content out/README.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FMLibreEditor-FM27-profile-tools
+          path: out/*
+          if-no-files-found: error
