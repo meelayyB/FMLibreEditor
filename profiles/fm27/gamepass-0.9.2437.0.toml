@@ -5,12 +5,13 @@ name = "FM27 Console 0.9.2437.0 (Game Pass)"
 edition = 27
 storefront = "gamePass"
 package_version = "0.9.2437.0"
+player_pointer_bias = 0xB0
 
 [plugin]
 size_of_image = 0x16FFF000
 link_timestamp = 0x6AE8D447
 
 [arrays]
-players = 0x538ACA8
+players = 0x538ACC0
 staff = 0x538ACC0
 clubs = 0x538AD08
