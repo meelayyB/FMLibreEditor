@@ -411,9 +411,10 @@ fn sample(len: u64) -> impl Iterator<Item = u64> {
 }
 
 /// The elements [`sample`] picks of the array of `len` pointers at `begin`.
-fn sampled_objects(process: &Process, begin: u64, len: u64) -> Vec<u64> {
+fn sampled_objects(process: &Process, array: &ArrayRef, begin: u64, len: u64) -> Vec<u64> {
     sample(len)
         .filter_map(|index| process.read_u64(begin + index * 8).ok())
+        .map(|pointer| array.object(pointer))
         .filter(|&object| is_user_pointer(object))
         .collect()
 }
@@ -459,7 +460,7 @@ fn sample_players(session: &Session) -> Vec<SampledPlayer> {
     };
     let (process, p) = (&session.process, &session.layout.player);
     let mut shifts: HashMap<u64, u64> = HashMap::new();
-    sampled_objects(process, begin, len)
+    sampled_objects(process, array, begin, len)
         .into_iter()
         .filter_map(|object| {
             let mut bytes = process.read_bytes(object, p.end() as usize).ok()?;
