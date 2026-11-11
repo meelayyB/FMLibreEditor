@@ -15,6 +15,7 @@ use std::fmt;
 use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
+use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
 use crate::edit::{Entity, Field};
 use crate::game::GAME_PLUGIN;
@@ -894,8 +895,8 @@ fn check_staff(session: &Session) -> CheckResult {
         .arrays
         .staff
         .as_ref()
-        .and_then(|array| array.locate(process, &session.plugin).ok())
-        .map(|(begin, len)| sampled_objects(process, begin, len))
+        .and_then(|array| array.locate(process, &session.plugin).ok().map(|(begin, len)| (array, begin, len)))
+        .map(|(array, begin, len)| sampled_objects(process, array, begin, len))
         .unwrap_or_default();
     let mut shifts: HashMap<u64, u64> = HashMap::new();
     for object in objects {
@@ -988,8 +989,8 @@ fn check_clubs(session: &Session) -> CheckResult {
         .arrays
         .clubs
         .as_ref()
-        .and_then(|array| array.locate(process, &session.plugin).ok())
-        .map(|(begin, len)| sampled_objects(process, begin, len))
+        .and_then(|array| array.locate(process, &session.plugin).ok().map(|(begin, len)| (array, begin, len)))
+        .map(|(array, begin, len)| sampled_objects(process, array, begin, len))
         .unwrap_or_default();
     for club in objects {
         let teams = process.read_u64(club + layout.club.teams).unwrap_or(0);
