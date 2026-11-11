@@ -116,7 +116,7 @@ pub fn read_players(
 
     let mut players = Vec::with_capacity(count as usize);
     for chunk in pointers.as_chunks::<8>().0 {
-        let object = u64::from_le_bytes(*chunk);
+        let object = array.object(u64::from_le_bytes(*chunk));
         if !is_user_pointer(object) {
             continue;
         }
