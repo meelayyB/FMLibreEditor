@@ -40,16 +40,19 @@ jobs:
       - name: Build editor and profile probe
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           cargo build --release -p fmlibre-probe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item target/release/fmlibre-probe.exe out/
           Set-Location app
           npm run release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package tools
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item target/release/FMLibreEditor.exe out/
-          Copy-Item target/release/fmlibre-probe.exe out/
           @"
           FM27 0.9.2437.0 PROFILE TOOL
 
