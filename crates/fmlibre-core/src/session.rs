@@ -287,7 +287,15 @@ impl Session {
     pub fn find_missing_arrays(&mut self) -> bool {
         let had_clubs = self.arrays.clubs.is_some();
         let hint = self.profile.as_ref().filter(|_| !self.search_all).map(|profile| &profile.arrays);
-        let found = find_missing(&self.process, &self.plugin, &self.layout, hint, &mut self.arrays);
+        let player_pointer_bias = self.profile.as_ref().and_then(|p| p.player_pointer_bias).unwrap_or(0);
+        let found = find_missing(
+            &self.process,
+            &self.plugin,
+            &self.layout,
+            hint,
+            player_pointer_bias,
+            &mut self.arrays,
+        );
         if !had_clubs && self.arrays.clubs.is_some() {
             self.finance_class = OnceLock::new();
             self.stadium_class = OnceLock::new();
