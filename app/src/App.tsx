@@ -82,7 +82,7 @@ function App() {
     try {
       await task();
     } catch (e) {
-      setError(String(e));
+      setError(describeError(e));
     } finally {
       setBusy(null);
     }
