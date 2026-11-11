@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - "app/src/**"
+      - "crates/**"
+      - "profiles/**"
       - ".github/workflows/build-profile-tools.yml"
 
 permissions:
