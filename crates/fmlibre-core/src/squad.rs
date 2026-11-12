@@ -261,6 +261,7 @@ impl Session {
     /// The player at `object` in the list of `team`, if the index has him at that address.
     fn squad_member(&self, club: &ClubSummary, team: u64, object: u64, players: &PlayerIndex) -> Option<SquadMember> {
         let (p, t) = (&self.layout.player, &self.layout.team);
+        let object = self.arrays.players.as_ref().map_or(object, |array| array.object(object));
         let player = p.person_block_shifts.iter().find_map(|&shift| {
             let uid = self.process.read_u32(object + p.at(p.uid, shift)).ok()?;
             players.get(uid).filter(|player| player.address == object && player.shift == shift)

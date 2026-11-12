@@ -611,7 +611,8 @@ pub(crate) fn check(session: &Session) -> Health {
         // His team belongs to a club and lists him.
         let team = player.u64(layout, p.team);
         if is_user_pointer(team) {
-            teams.add(team_lists(process, layout, team, player.object));
+            let bias = session.arrays.players.as_ref().map_or(0, |array| array.pointer_bias);
+            teams.add(team_lists(process, layout, team, player.object, bias));
         }
 
         // His cohesion entries are for clubs and nations, from 1 to 100, and one is for his club.
@@ -867,7 +868,7 @@ fn contract_fits(
 }
 
 /// Whether `team` belongs to a club with a UID and its list of players holds `player`.
-fn team_lists(process: &Process, layout: &Layout, team: u64, player: u64) -> bool {
+fn team_lists(process: &Process, layout: &Layout, team: u64, player: u64, pointer_bias: u64) -> bool {
     let club = process.read_u64(team + layout.team.club).unwrap_or(0);
     if !is_user_pointer(club) || process.read_u32(club + layout.club.uid).unwrap_or(0) == 0 {
         return false;
@@ -882,7 +883,12 @@ fn team_lists(process: &Process, layout: &Layout, team: u64, player: u64) -> boo
     }
     process
         .read_bytes(begin, (end - begin) as usize)
-        .is_ok_and(|list| list.as_chunks::<8>().0.iter().any(|slot| u64::from_le_bytes(*slot) == player))
+        .is_ok_and(|list| {
+            list.as_chunks::<8>().0.iter().any(|slot| {
+                let listed = u64::from_le_bytes(*slot);
+                listed == player || listed == player.saturating_add(pointer_bias)
+            })
+        })
 }
 
 /// Days from `from` to `to`.
